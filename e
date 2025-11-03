@@ -32,7 +32,7 @@ local function sendWebhook(displayName, rarity, money, players)
 			{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
 			{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
 			{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
-			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/"..PlaceId.."?jobId="..JobId,["inline"]=false}
+			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..JobId,["inline"]=false}
 		}
 	}}}
 	local encoded = HttpService:JSONEncode(data)
