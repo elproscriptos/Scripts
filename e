@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-task.wait(1)
+task.wait(3)
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
