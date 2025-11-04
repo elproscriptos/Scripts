@@ -1,10 +1,8 @@
 repeat task.wait() until game:IsLoaded()
-task.wait(3)
-
+		task.wait(1)
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-
 local player = Players.LocalPlayer
 local PlaceId = game.PlaceId
 local JobId = game.JobId
@@ -14,9 +12,6 @@ local ALLOWED_RARITIES = { "Secret", "Brainrot God" }
 local PROXY = "https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT = 100
 local teleportFunc = queueonteleport or queue_on_teleport
-local fileName = "VisitedServers.txt"
-
-if not isfile(fileName) then writefile(fileName, "") end
 
 local function parseMoney(text)
 	if not text then return 0 end
@@ -28,112 +23,77 @@ local function parseMoney(text)
 	else return num / 1_000_000 end
 end
 
-local function sendWebhook(displayName, rarity, money, players, serverid)
-	local data = {
-		["embeds"] = {{
-			["title"] = "🐾 **Brainrot Found!**",
-			["color"] = tonumber(0x00FFFF),
-			["fields"] = {
-				{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},
-				{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
-				{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
-				{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
-				{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}
-			}
-		}}
-	}
-	pcall(function()
-		request({
-			Url = Webhook_URL,
-			Method = "POST",
-			Headers = {["Content-Type"]="application/json"},
-			Body = HttpService:JSONEncode(data)
-		})
-	end)
+local function sendWebhook(displayName, rarity, money, players)
+	local data = {["content"] = "", ["embeds"] = {{
+		["title"] = "🐾 **Brainrot Found!**",
+		["color"] = tonumber(0x00FFFF),
+		["fields"] = {
+			{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},
+			{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
+			{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
+			{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
+			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..JobId,["inline"]=false}
+		}
+	}}}
+	local encoded = HttpService:JSONEncode(data)
+	pcall(function() request({Url=Webhook_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=encoded}) end)
 end
-
-local function getLastLoggedServer()
-	local content = readfile(fileName)
-	if not content or content == "" then return nil end
-	local s = content:match("[^\r\n]+")
-	return s
-end
-
-local sentWebhookThisServer = false
 
 local function scanServer()
-	for _, descendant in ipairs(workspace:GetDescendants()) do
-		if descendant.Name == "AnimalOverhead" and descendant:IsA("BillboardGui") then
-			local genLabel = descendant:FindFirstChild("Generation")
-			local displayName = descendant:FindFirstChild("DisplayName")
-			local rarityLabel = descendant:FindFirstChild("Rarity")
+	for _,descendant in ipairs(workspace:GetDescendants()) do
+		if descendant.Name=="AnimalOverhead" and descendant:IsA("BillboardGui") then
+			local genLabel=descendant:FindFirstChild("Generation")
+			local displayName=descendant:FindFirstChild("DisplayName")
+			local rarityLabel=descendant:FindFirstChild("Rarity")
 			if genLabel and displayName and rarityLabel then
-				local money = parseMoney(genLabel.Text)
-				local rarity = rarityLabel.Text
-				if money >= MIN_MILLIONS and table.find(ALLOWED_RARITIES, rarity) then
-					if not sentWebhookThisServer then
-						local players = #Players:GetPlayers()
-						local lastServer = getLastLoggedServer() or JobId
-						sendWebhook(displayName.Text, rarity, money, players, lastServer)
-						sentWebhookThisServer = true
-					end
-					return true
+				local money=parseMoney(genLabel.Text)
+				local rarity=rarityLabel.Text
+				if money>=MIN_MILLIONS and table.find(ALLOWED_RARITIES,rarity) then
+					local players=#Players:GetPlayers()
+					sendWebhook(displayName.Text,rarity,money,players)
 				end
 			end
 		end
 	end
-	return false
 end
 
 local function getAvailableServers()
-	local servers = {}
-	local cursor = ""
+	local servers={}
+	local cursor=""
 	repeat
-		local url = string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s", PROXY, PlaceId, PAGE_LIMIT, cursor ~= "" and "&cursor="..cursor or "")
-		local ok, resp = pcall(function() return game:HttpGet(url) end)
-		if not ok then break end
-		local success, data = pcall(function() return HttpService:JSONDecode(resp) end)
+		local url=string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s",PROXY,PlaceId,PAGE_LIMIT,cursor~="" and "&cursor="..cursor or "")
+		local success,response=pcall(function() return game:HttpGet(url) end)
 		if not success then break end
+		local data=HttpService:JSONDecode(response)
 		if data and data.data then
-			for _, server in ipairs(data.data) do
-				if type(server) == "table" and server.id ~= JobId and tonumber(server.playing) < tonumber(server.maxPlayers) then
-					table.insert(servers, server.id)
+			for _,server in ipairs(data.data) do
+				if type(server)=="table" and server.id~=JobId and tonumber(server.playing)<tonumber(server.maxPlayers) then
+					table.insert(servers,server.id)
 				end
 			end
 		end
-		cursor = (data and data.nextPageCursor) or ""
-	until cursor == "" or #servers >= 50
+		cursor=data.nextPageCursor or ""
+	until cursor=="" or #servers>=50
 	return servers
 end
 
-local lastHopTime = 0
-local hopCooldown = 6
-
 local function serverHop()
-	if tick() - lastHopTime < hopCooldown then return false end
-	local servers = getAvailableServers()
-	if not servers or #servers == 0 then return false end
-	local serverId = servers[math.random(1, #servers)]
-	writefile(fileName, serverId.."\n")
-	if teleportFunc then
-		teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
+	local servers=getAvailableServers()
+	if #servers>0 then
+		local serverId=servers[math.random(1,#servers)]
+		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
 	end
-	TeleportService:TeleportToPlaceInstance(PlaceId, serverId, player)
-	lastHopTime = tick()
-	return true
 end
 
+
+
 while true do
-	local ok, err = pcall(function()
-		local found = scanServer()
-		if not found then
-			sentWebhookThisServer = false
-			serverHop()
-		end
-	end)
-	if not ok then
-		sentWebhookThisServer = false
-		serverHop()
-	end
-	task.wait(1.5)
+	scanServer()
+	if teleportFunc then
+	teleportFunc([[
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()
+	]])
+end
+	serverHop()
+	task.wait(1)
 end
