@@ -1,44 +1,31 @@
 repeat task.wait() until game:IsLoaded()
-		task.wait(1)
-local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local player = Players.LocalPlayer
-local PlaceId = game.PlaceId
-local JobId = game.JobId
-local Webhook_URL = "https://discord.com/api/webhooks/1434613898270736530/ZUgzRA73I65rxaKgrSMciek-nX11l_pq4H-8Nwx9kB2FcDlPtmwDsIbe6iYNhBkez9Jp"
-local MIN_MILLIONS = 1
-local ALLOWED_RARITIES = { "Secret", "Brainrot God" }
-local PROXY = "https://brotato-three.vercel.app/games/v1/games/"
-local PAGE_LIMIT = 100
-local teleportFunc = queueonteleport or queue_on_teleport
-local fileName = "VisitedServers.txt"
-if not isfile(fileName) then writefile(fileName, "") end
+task.wait(1)
+local Players=game:GetService("Players")
+local TeleportService=game:GetService("TeleportService")
+local HttpService=game:GetService("HttpService")
+local player=Players.LocalPlayer
+local PlaceId=game.PlaceId
+local JobId=game.JobId
+local Webhook_URL="https://discord.com/api/webhooks/1434613898270736530/ZUgzRA73I65rxaKgrSMciek-nX11l_pq4H-8Nwx9kB2FcDlPtmwDsIbe6iYNhBkez9Jp"
+local MIN_MILLIONS=1
+local ALLOWED_RARITIES={"Secret","Brainrot God"}
+local PROXY="https://brotato-three.vercel.app/games/v1/games/"
+local PAGE_LIMIT=100
+local teleportFunc=queueonteleport or queue_on_teleport
+local fileName="VisitedServers.txt"
+if not isfile(fileName) then writefile(fileName,"") end
 
 local function parseMoney(text)
 	if not text then return 0 end
-	text = text:gsub(",", ""):upper()
-	local num = tonumber(text:match("[%d%.]+")) or 0
-	if text:find("B") then return num * 1000
-	elseif text:find("M") then return num
-	elseif text:find("K") then return num / 1000
-	else return num / 1_000_000 end
+	text=text:gsub(",",""):upper()
+	local num=tonumber(text:match("[%d%.]+")) or 0
+	if text:find("B") then return num*1000 elseif text:find("M") then return num elseif text:find("K") then return num/1000 else return num/1_000_000 end
 end
 
-local function sendWebhook(displayName, rarity, money, players)
-	local serverid = readfile("VisitedServers.txt")
-	local data = {["content"] = "", ["embeds"] = {{
-		["title"] = "🐾 **Brainrot Found!**",
-		["color"] = tonumber(0x00FFFF),
-		["fields"] = {
-			{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},
-			{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
-			{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
-			{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
-			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}
-		}
-	}}}
-	local encoded = HttpService:JSONEncode(data)
+local function sendWebhook(displayName,rarity,money,players)
+	local serverid=readfile("VisitedServers.txt")
+	local data={["content"]="",["embeds"]={{["title"]="🐾 **Brainrot Found!**",["color"]=tonumber(0x00FFFF),["fields"]={{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}}}}
+	local encoded=HttpService:JSONEncode(data)
 	pcall(function() request({Url=Webhook_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=encoded}) end)
 end
 
@@ -62,6 +49,12 @@ end
 
 local function getAvailableServers()
 	local servers={}
+	local visited={}
+	if isfile(fileName) then
+		for line in string.gmatch(readfile(fileName),"[^\r\n]+") do
+			visited[line]=true
+		end
+	end
 	local cursor=""
 	repeat
 		local url=string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s",PROXY,PlaceId,PAGE_LIMIT,cursor~="" and "&cursor="..cursor or "")
@@ -70,7 +63,7 @@ local function getAvailableServers()
 		local data=HttpService:JSONDecode(response)
 		if data and data.data then
 			for _,server in ipairs(data.data) do
-				if type(server)=="table" and server.id~=JobId and tonumber(server.playing)<tonumber(server.maxPlayers) then
+				if type(server)=="table" and server.id~=JobId and tonumber(server.playing)<tonumber(server.maxPlayers) and not visited[server.id] then
 					table.insert(servers,server.id)
 				end
 			end
@@ -82,22 +75,23 @@ end
 
 local function serverHop()
 	local servers=getAvailableServers()
-	if #servers>0 then
-		local serverId=servers[math.random(1,#servers)]
-		writefile("VisitedServers.txt", serverId)
-		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
+	if #servers==0 then return end
+	for _,serverId in ipairs(servers) do
+		local success=pcall(function()
+			TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
+		end)
+		if success then
+			writefile("VisitedServers.txt",serverId)
+			break
+		end
 	end
 end
-
-
 
 while true do
 	scanServer()
 	if teleportFunc then
-	teleportFunc([[
-	loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()
-	]])
-end
+		teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
+	end
 	serverHop()
 	task.wait(1)
 end
