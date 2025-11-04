@@ -7,7 +7,7 @@ local player=Players.LocalPlayer
 local PlaceId=game.PlaceId
 local JobId=game.JobId
 local FIREBASE_URL="https://auto-join-logs-default-rtdb.firebaseio.com/brainrots.json"
-local MIN_MILLIONS=1
+local MIN_MILLIONS=100
 local ALLOWED_RARITIES={"Secret","Brainrot God"}
 local PROXY="https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT=100
@@ -34,10 +34,10 @@ local function parseMoney(text)
 end
 local function sendToFirebase(data)
 	local jsonData=HttpService:JSONEncode(data)
-	syn.request({Url=FIREBASE_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=jsonData})
+	request({Url=FIREBASE_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=jsonData})
 end
 local function clearFirebase()
-	syn.request({Url="https://auto-join-logs-default-rtdb.firebaseio.com/.json",Method="DELETE"})
+	request({Url="https://auto-join-logs-default-rtdb.firebaseio.com/.json",Method="DELETE"})
 end
 local function scanServer()
 	local brainrots={}
