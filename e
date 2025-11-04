@@ -49,7 +49,7 @@ local function scanServer()
 			if g and n and r then
 				local money=parseMoney(g.Text)
 				local rarity=r.Text
-				if money>=MIN_MILLIONS and table.find(ALLOWED_RARITIES,rarity)then
+				if table.find(ALLOWED_RARITIES,rarity)and money>=MIN_MILLIONS then
 					table.insert(brainrots,{Name=n.Text,Rarity=rarity,Money=money,Players=#Players:GetPlayers(),JobId=JobId,PlaceId=PlaceId,Time=os.time()})
 				end
 			end
