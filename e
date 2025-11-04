@@ -8,13 +8,17 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local PlaceId = game.PlaceId
 local JobId = game.JobId
-
 local Webhook_URL = "https://discord.com/api/webhooks/1434613898270736530/ZUgzRA73I65rxaKgrSMciek-nX11l_pq4H-8Nwx9kB2FcDlPtmwDsIbe6iYNhBkez9Jp"
 local MIN_MILLIONS = 1
 local ALLOWED_RARITIES = { "Secret", "Brainrot God" }
 local PROXY = "https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT = 100
 local teleportFunc = queueonteleport or queue_on_teleport
+local fileName = "VisitedServers.txt"
+
+if not isfile(fileName) then
+	writefile(fileName, "")
+end
 
 local function parseMoney(text)
 	if not text then return 0 end
@@ -31,10 +35,9 @@ local function parseMoney(text)
 	end
 end
 
-local function sendWebhook(displayName, rarity, money, players)
+local function sendWebhook(displayName, rarity, money, players, serverid)
 	local data = {
-		["content"] = "",
-		["embeds"] = {{
+		["embeds"] = { {
 			["title"] = "🐾 **Brainrot Found!**",
 			["color"] = tonumber(0x00FFFF),
 			["fields"] = {
@@ -42,17 +45,16 @@ local function sendWebhook(displayName, rarity, money, players)
 				{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
 				{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
 				{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
-				{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..JobId,["inline"]=false}
+				{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}
 			}
-		}}
+		} }
 	}
-	local encoded = HttpService:JSONEncode(data)
 	pcall(function()
 		request({
 			Url = Webhook_URL,
 			Method = "POST",
 			Headers = {["Content-Type"]="application/json"},
-			Body = encoded
+			Body = HttpService:JSONEncode(data)
 		})
 	end)
 end
@@ -68,11 +70,17 @@ local function scanServer()
 				local rarity = rarityLabel.Text
 				if money >= MIN_MILLIONS and table.find(ALLOWED_RARITIES, rarity) then
 					local players = #Players:GetPlayers()
-					sendWebhook(displayName.Text, rarity, money, players)
+					local lastServer = nil
+					if isfile(fileName) then
+						lastServer = readfile(fileName):match("[^\r\n]+")
+					end
+					sendWebhook(displayName.Text, rarity, money, players, lastServer or JobId)
+					return true
 				end
 			end
 		end
 	end
+	return false
 end
 
 local function getAvailableServers()
@@ -99,25 +107,23 @@ local function serverHop()
 	local servers = getAvailableServers()
 	if #servers > 0 then
 		local serverId = servers[math.random(1, #servers)]
+		writefile(fileName, serverId.."\n")
+		if teleportFunc then
+			teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
+		end
 		TeleportService:TeleportToPlaceInstance(PlaceId, serverId, player)
 	end
 end
 
 while true do
 	local success, err = pcall(function()
-		scanServer()
-		if teleportFunc then
-			teleportFunc([[
-				loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()
-			]])
+		local found = scanServer()
+		if not found then
+			serverHop()
 		end
-		serverHop()
 	end)
-
 	if not success then
-		warn("[ERROR DETECTADO] => "..tostring(err))
 		serverHop()
 	end
-
 	task.wait(1)
 end
