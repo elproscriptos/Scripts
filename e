@@ -7,7 +7,8 @@ local player=Players.LocalPlayer
 local PlaceId=game.PlaceId
 local JobId=game.JobId
 local FIREBASE_URL="https://auto-join-logs-default-rtdb.firebaseio.com/brainrots.json"
-local MIN_MILLIONS=100
+local Webhook_URL="https://discord.com/api/webhooks/1434613898270736530/ZUgzRA73I65rxaKgrSMciek-nX11l_pq4H-8Nwx9kB2FcDlPtmwDsIbe6iYNhBkez9Jp"
+local MIN_MILLIONS=1
 local ALLOWED_RARITIES={"Secret","Brainrot God"}
 local PROXY="https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT=100
@@ -31,6 +32,17 @@ local function parseMoney(text)
 	else
 		return num
 	end
+end
+local function sendWebhook(displayName,rarity,money,players)
+	local data={["content"]="",["embeds"]={{["title"]="🐾 **Brainrot Found!**",["color"]=tonumber(0x00FFFF),["fields"]={
+		{["name"]="🐶 Name",["value"]=tostring(displayName or"Unknown"),["inline"]=true},
+		{["name"]="🌟 Rarity",["value"]=tostring(rarity or"N/A"),["inline"]=true},
+		{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
+		{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
+		{["name"]="🧩 Join Code:",["value"]="```lua\ngame:GetService('TeleportService'):TeleportToPlaceInstance(109983668079237,'" .. JobId .. "',game.Players.LocalPlayer)\n```",["inline"]=false}
+	}}}}
+	local encoded=HttpService:JSONEncode(data)
+	pcall(function()request({Url=Webhook_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=encoded})end)
 end
 local function sendToFirebase(data)
 	local jsonData=HttpService:JSONEncode(data)
@@ -59,6 +71,7 @@ local function scanServer()
 		clearFirebase()
 		for _,info in ipairs(brainrots)do
 			sendToFirebase(info)
+			sendWebhook(info.Name,info.Rarity,info.Money,info.Players)
 		end
 	end
 end
@@ -92,9 +105,7 @@ end
 while true do
 	scanServer()
 	if teleportFunc then
-		teleportFunc([[
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()
-		]])
+		teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
 	end
 	serverHop()
 	task.wait(1)
