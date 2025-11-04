@@ -12,6 +12,8 @@ local ALLOWED_RARITIES = { "Secret", "Brainrot God" }
 local PROXY = "https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT = 100
 local teleportFunc = queueonteleport or queue_on_teleport
+local fileName = "VisitedServers.txt"
+if not isfile(fileName) then writefile(fileName, "") end
 
 local function parseMoney(text)
 	if not text then return 0 end
@@ -24,6 +26,7 @@ local function parseMoney(text)
 end
 
 local function sendWebhook(displayName, rarity, money, players)
+	local serverid = readfile("VisitedServers.txt")
 	local data = {["content"] = "", ["embeds"] = {{
 		["title"] = "🐾 **Brainrot Found!**",
 		["color"] = tonumber(0x00FFFF),
@@ -32,7 +35,7 @@ local function sendWebhook(displayName, rarity, money, players)
 			{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},
 			{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},
 			{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},
-			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..JobId,["inline"]=false}
+			{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}
 		}
 	}}}
 	local encoded = HttpService:JSONEncode(data)
@@ -81,6 +84,7 @@ local function serverHop()
 	local servers=getAvailableServers()
 	if #servers>0 then
 		local serverId=servers[math.random(1,#servers)]
+		writefile("VisitedServers.txt", serverId)
 		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
 	end
 end
