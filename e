@@ -16,13 +16,23 @@ local fileName = "VisitedServers.txt"
 if not isfile(fileName) then writefile(fileName, "") end
 
 local function parseMoney(text)
-	if not text then return 0 end
+	if not text or text == "" then return 0 end
 	text = text:gsub(",", ""):upper()
+
 	local num = tonumber(text:match("[%d%.]+")) or 0
-	if text:find("B") then return num * 1000
-	elseif text:find("M") then return num
-	elseif text:find("K") then return num / 1000
-	else return num / 1_000_000 end
+	if text:find("Q") then
+		return num * 1_000_000_000
+	elseif text:find("T") then
+		return num * 1_000_000
+	elseif text:find("B") then
+		return num * 1_000
+	elseif text:find("M") then
+		return num
+	elseif text:find("K") then
+		return num / 1000
+	else
+		return num
+	end
 end
 
 local function sendWebhook(displayName, rarity, money, players)
