@@ -73,7 +73,10 @@ local function scanServer()
 			sendToFirebase(info)
 			sendWebhook(info.Name,info.Rarity,info.Money,info.Players)
 		end
+		task.wait(3)
+		return true
 	end
+	return false
 end
 local function getAvailableServers()
 	local servers={}
@@ -102,11 +105,14 @@ local function serverHop()
 		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
 	end
 end
-while true do
-	scanServer()
-	if teleportFunc then
-		teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
-	end
+local found=scanServer()
+if teleportFunc then
+	teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
+end
+if found then
+	task.wait(2)
 	serverHop()
+else
 	task.wait(1)
+	serverHop()
 end
