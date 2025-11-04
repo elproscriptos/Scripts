@@ -23,8 +23,7 @@ local function parseMoney(text)
 end
 
 local function sendWebhook(displayName,rarity,money,players)
-	local serverid=readfile("VisitedServers.txt")
-	local data={["content"]="",["embeds"]={{["title"]="🐾 **Brainrot Found!**",["color"]=tonumber(0x00FFFF),["fields"]={{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..serverid,["inline"]=false}}}}
+	local data={["content"]="",["embeds"]={{["title"]="🐾 **Brainrot Found!**",["color"]=tonumber(0x00FFFF),["fields"]={{["name"]="🐶 Name",["value"]=tostring(displayName or "Unknown"),["inline"]=true},{["name"]="🌟 Rarity",["value"]=tostring(rarity or "N/A"),["inline"]=true},{["name"]="💸 Money Per Second",["value"]=tostring(money).."M",["inline"]=true},{["name"]="👥 Players",["value"]=tostring(players).."/8",["inline"]=true},{["name"]="🔗 Join Link",["value"]="https://www.roblox.com/games/start?placeId="..PlaceId.."&gameInstanceId="..JobId,["inline"]=false}}}}
 	local encoded=HttpService:JSONEncode(data)
 	pcall(function() request({Url=Webhook_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=encoded}) end)
 end
@@ -81,7 +80,7 @@ local function serverHop()
 			TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
 		end)
 		if success then
-			writefile("VisitedServers.txt",serverId)
+			appendfile("VisitedServers.txt",serverId.."\n")
 			break
 		end
 	end
@@ -92,6 +91,7 @@ while true do
 	if teleportFunc then
 		teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
 	end
+	task.wait(1)
 	serverHop()
 	task.wait(1)
 end
