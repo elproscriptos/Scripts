@@ -9,7 +9,7 @@ local JobId=game.JobId
 local FIREBASE_URL="https://auto-join-logs-default-rtdb.firebaseio.com/brainrots.json"
 local Webhook_URL="https://discord.com/api/webhooks/1434613898270736530/ZUgzRA73I65rxaKgrSMciek-nX11l_pq4H-8Nwx9kB2FcDlPtmwDsIbe6iYNhBkez9Jp"
 local MIN_MILLIONS=1
-local ALLOWED_RARITIES={"Secret","Brainrot God"}
+local ALLOWED_RARITIES={"Secret","OG"}
 local PROXY="https://brotato-three.vercel.app/games/v1/games/"
 local PAGE_LIMIT=100
 local teleportFunc=queueonteleport or queue_on_teleport
@@ -48,9 +48,6 @@ local function sendToFirebase(data)
 	local jsonData=HttpService:JSONEncode(data)
 	request({Url=FIREBASE_URL,Method="POST",Headers={["Content-Type"]="application/json"},Body=jsonData})
 end
-local function clearFirebase()
-	request({Url="https://auto-join-logs-default-rtdb.firebaseio.com/.json",Method="DELETE"})
-end
 local function scanServer()
 	local brainrots={}
 	for _,d in ipairs(workspace:GetDescendants())do
@@ -68,7 +65,6 @@ local function scanServer()
 		end
 	end
 	if #brainrots>0 then
-		clearFirebase()
 		for _,info in ipairs(brainrots)do
 			sendToFirebase(info)
 			sendWebhook(info.Name,info.Rarity,info.Money,info.Players)
@@ -81,38 +77,47 @@ end
 local function getAvailableServers()
 	local servers={}
 	local cursor=""
+
 	repeat
-		local url=string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s",PROXY,PlaceId,PAGE_LIMIT,cursor~=""and"&cursor="..cursor or"")
-		local s,r=pcall(function()return game:HttpGet(url)end)
-		if not s then break end
-		local data=HttpService:JSONDecode(r)
+		local url = string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s", PROXY, PlaceId, PAGE_LIMIT, cursor ~= "" and "&cursor="..cursor or "")
+		local ok, result = pcall(function()
+			return game:HttpGet(url)
+		end)
+		if not ok then break end
+
+		local data = HttpService:JSONDecode(result)
 		if data and data.data then
-			for _,server in ipairs(data.data)do
-				if type(server)=="table"and server.id~=JobId and tonumber(server.playing)<tonumber(server.maxPlayers)then
-					table.insert(servers,server.id)
+			for _, server in ipairs(data.data) do
+				if server.id ~= JobId and tonumber(server.playing) < tonumber(server.maxPlayers) then
+					return {server.id} -- ⚡ ENCUENTRA 1 Y SALE
 				end
 			end
 		end
-		cursor=data.nextPageCursor or""
-	until cursor==""or#servers>=50
+
+		cursor = data.nextPageCursor or ""
+	until cursor == ""
+
 	return servers
 end
+
+
 local function serverHop()
-	local servers=getAvailableServers()
-	if #servers>0 then
-		local serverId=servers[math.random(1,#servers)]
-		writefile("VisitedServers.txt",serverId)
-		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
+	local servers = getAvailableServers()
+	if #servers > 0 then
+		TeleportService:TeleportToPlaceInstance(PlaceId, servers[1], player)
 	end
 end
-local found=scanServer()
+
+
+-- FINAL MÁS RÁPIDO
+local found = scanServer()
+
 if teleportFunc then
 	teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
 end
+
 if found then
-	task.wait(2)
-	serverHop()
+	serverHop() -- ⚡ INSTANT HOP
 else
-	task.wait(1)
-	serverHop()
+	serverHop() -- ⚡ SIN ESPERAR NADA
 end
