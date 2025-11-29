@@ -74,50 +74,63 @@ local function scanServer()
 	end
 	return false
 end
-local function getAvailableServers()
+local function getAvailableServers(maxRetries)
+	maxRetries=maxRetries or 3
 	local servers={}
-	local cursor=""
-
-	repeat
-		local url = string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d%s", PROXY, PlaceId, PAGE_LIMIT, cursor ~= "" and "&cursor="..cursor or "")
-		local ok, result = pcall(function()
-			return game:HttpGet(url)
-		end)
-		if not ok then break end
-
-		local data = HttpService:JSONDecode(result)
-		if data and data.data then
-			for _, server in ipairs(data.data) do
-				if server.id ~= JobId and tonumber(server.playing) < tonumber(server.maxPlayers) then
-					return {server.id} -- ⚡ ENCUENTRA 1 Y SALE
-				end
+	local tries=0
+	while tries<maxRetries and #servers==0 do
+		tries+=1
+		local cursor=nil
+		repeat
+			local url
+			if cursor then
+				local encoded=HttpService:UrlEncode(cursor)
+				url=string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d&cursor=%s",PROXY,PlaceId,PAGE_LIMIT,encoded)
+			else
+				url=string.format("%s%s/servers/Public?sortOrder=Asc&limit=%d",PROXY,PlaceId,PAGE_LIMIT)
 			end
+			local success,result=pcall(function()return game:HttpGet(url)end)
+			if success then
+				local data=HttpService:JSONDecode(result)
+				if data and data.data then
+					for _,server in ipairs(data.data)do
+						if type(server)=="table"and server.id~=JobId and tonumber(server.playing)>=3 and tonumber(server.playing)<tonumber(server.maxPlayers)then
+							table.insert(servers,server.id)
+						end
+					end
+				end
+				cursor=data.nextPageCursor
+			else
+				cursor=nil
+			end
+			task.wait(0.2)
+		until not cursor
+		if #servers==0 then
+			task.wait(2)
 		end
-
-		cursor = data.nextPageCursor or ""
-	until cursor == ""
-
+	end
 	return servers
 end
 
-
 local function serverHop()
-	local servers = getAvailableServers()
-	if #servers > 0 then
-		TeleportService:TeleportToPlaceInstance(PlaceId, servers[1], player)
+	local servers=getAvailableServers(5)
+	if #servers>0 then
+		local serverId=servers[math.random(1,#servers)]
+		writefile("VisitedServers.txt",serverId)
+		TeleportService:TeleportToPlaceInstance(PlaceId,serverId,player)
+	else
+		task.wait(2)
+		serverHop()
 	end
 end
-
-
--- FINAL MÁS RÁPIDO
-local found = scanServer()
-
+local found=scanServer()
 if teleportFunc then
 	teleportFunc([[loadstring(game:HttpGet("https://raw.githubusercontent.com/elproscriptos/Scripts/refs/heads/main/e"))()]])
 end
-
 if found then
-	serverHop() -- ⚡ INSTANT HOP
+	task.wait(2)
+	serverHop()
 else
-	serverHop() -- ⚡ SIN ESPERAR NADA
+	task.wait(1)
+	serverHop()
 end
